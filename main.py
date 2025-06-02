@@ -88,7 +88,7 @@ ZODIAC_SIGNS = [
     "libra", "scorpio", "sagittarius", "capricorn", "aquarius", "pisces"
 ]
 BLOG_CATEGORY = "astrology" # Changed category
-NUM_BLOGS_TO_CREATE = 5 # Number of horoscopes/signs to process per run
+NUM_BLOGS_TO_CREATE = 12 # Number of horoscopes/signs to process per run
 
 # Image & Output Folders
 BRANDING_LOGO_PATH = os.getenv('BRANDING_LOGO_PATH', None) # e.g., 'your_logo.png'

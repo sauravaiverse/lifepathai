@@ -62,6 +62,20 @@ if os.getenv('CI'):
     GOOGLE_CLIENT_SECRETS_JSON = os.getenv('GOOGLE_CLIENT_SECRETS_JSON') or os.getenv('SECRET_GOOGLE_CLIENT_SECRETS_JSON')
     GOOGLE_OAUTH_TOKEN_JSON = os.getenv('GOOGLE_OAUTH_TOKEN_JSON') or os.getenv('SECRET_GOOGLE_OAUTH_TOKEN_JSON')
 
+# --- SEO CONFIGURATION ---
+BLOG_NAME = os.getenv('BLOG_NAME', 'Cosmic Insights Blog')
+BLOG_DESCRIPTION = os.getenv('BLOG_DESCRIPTION', 'Daily Astrology Insights and Horoscopes')
+BLOG_AUTHOR = os.getenv('BLOG_AUTHOR', 'Cosmic Insights Team')
+BLOG_TWITTER_HANDLE = os.getenv('BLOG_TWITTER_HANDLE', '@cosmicinsights')
+BLOG_FACEBOOK_PAGE = os.getenv('BLOG_FACEBOOK_PAGE', 'cosmicinsights')
+BLOG_INSTAGRAM_HANDLE = os.getenv('BLOG_INSTAGRAM_HANDLE', 'cosmicinsights')
+
+# SEO Placeholders (will be replaced after post creation)
+CANONICAL_URL_PLACEHOLDER = "[CANONICAL_URL_PLACEHOLDER]"
+PUBLIC_IMAGE_URL_PLACEHOLDER = "[PUBLIC_IMAGE_URL_PLACEHOLDER]"
+
+# --- END SEO CONFIGURATION ---
+
 # API-Ninjas Horoscope API Configuration
 API_NINJAS_BASE_URL = "https://api.api-ninjas.com/v1/horoscope"
 
@@ -1161,18 +1175,19 @@ def markdown_to_html(markdown_text, main_featured_image_filepath=None, main_feat
     return final_html_content
 
 def generate_enhanced_html_template(title, description, keywords, image_src_for_html_body,
-                                  html_blog_content, category, article_url_for_disclaimer, published_date):
+                                  html_blog_content, category, canonical_post_url,
+                                  raw_data_source_url, published_date, public_featured_image_url=''):
     """Generate enhanced HTML template with better styling and comprehensive SEO elements."""
 
     # Correct HTML escaping for attributes:
     escaped_title_html = title.replace('&', '&amp;').replace('"', '&quot;').replace("'", '&apos;')
-    # Use the already escaped description
     escaped_description_html = description
 
     json_safe_title = json.dumps(title)[1:-1]
     json_safe_description = json.dumps(description)[1:-1]
 
-    image_url_for_seo = ''
+    # Use public image URL if available, otherwise use placeholder
+    image_url_for_seo = public_featured_image_url if public_featured_image_url else PUBLIC_IMAGE_URL_PLACEHOLDER
 
     structured_data = f"""
     <script type="application/ld+json">
@@ -1186,11 +1201,11 @@ def generate_enhanced_html_template(title, description, keywords, image_src_for_
       "articleSection": "{category.capitalize()}",
       "author": {{
         "@type": "Organization",
-        "name": "Cosmic Insights Blog"
+        "name": "{BLOG_AUTHOR}"
       }},
       "publisher": {{
         "@type": "Organization",
-        "name": "Your Astrology Blog Name",
+        "name": "{BLOG_NAME}",
         "logo": {{
           "@type": "ImageObject",
           "url": "{image_url_for_seo}"
@@ -1198,7 +1213,7 @@ def generate_enhanced_html_template(title, description, keywords, image_src_for_
       }},
       "mainEntityOfPage": {{
         "@type": "WebPage",
-        "@id": "{article_url_for_disclaimer}"
+        "@id": "{canonical_post_url}"
       }},
       "description": "{json_safe_description}"
     }}
@@ -1334,6 +1349,27 @@ def generate_enhanced_html_template(title, description, keywords, image_src_for_
             color: #666;
         }
 
+        .social-share {
+            margin: 30px 0;
+            text-align: center;
+        }
+
+        .social-share a {
+            display: inline-block;
+            margin: 0 10px;
+            padding: 8px 15px;
+            background: var(--primary-color);
+            color: white;
+            border-radius: 20px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .social-share a:hover {
+            background: var(--secondary-color);
+            transform: translateY(-2px);
+        }
+
         @media (max-width: 768px) {
             .container {
                 margin: 15px;
@@ -1343,6 +1379,11 @@ def generate_enhanced_html_template(title, description, keywords, image_src_for_
             h2 { font-size: 1.5em; }
             h3 { font-size: 1.2em; }
             .category-tag { font-size: 0.8em; padding: 6px 14px; }
+            .social-share a {
+                margin: 5px;
+                padding: 6px 12px;
+                font-size: 0.9em;
+            }
         }
     </style>
     """
@@ -1355,21 +1396,24 @@ def generate_enhanced_html_template(title, description, keywords, image_src_for_
     <meta name="description" content="{escaped_description_html}">
     <meta name="keywords" content="{keywords}">
     <meta name="robots" content="index, follow">
-    <meta name="author" content="Cosmic Insights Blog">
+    <meta name="author" content="{BLOG_AUTHOR}">
+    <link rel="canonical" href="{canonical_post_url}" />
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="article">
-    <meta property="og:url" content="{article_url_for_disclaimer}">
+    <meta property="og:url" content="{canonical_post_url}">
     <meta property="og:title" content="{escaped_title_html}">
     <meta property="og:description" content="{escaped_description_html}">
     <meta property="og:image" content="{image_url_for_seo}">
+    <meta property="og:site_name" content="{BLOG_NAME}">
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="{article_url_for_disclaimer}">
+    <meta property="twitter:url" content="{canonical_post_url}">
     <meta property="twitter:title" content="{escaped_title_html}">
     <meta property="twitter:description" content="{escaped_description_html}">
     <meta property="twitter:image" content="{image_url_for_seo}">
+    <meta property="twitter:site" content="{BLOG_TWITTER_HANDLE}">
 
     {structured_data}
     {html_styles}
@@ -1384,9 +1428,14 @@ def generate_enhanced_html_template(title, description, keywords, image_src_for_
         <div class="article-content">
             {html_blog_content}
         </div>
+        <div class="social-share">
+            <a href="https://twitter.com/intent/tweet?text={escaped_title_html}&url={canonical_post_url}" target="_blank" rel="noopener noreferrer">Share on Twitter</a>
+            <a href="https://www.facebook.com/sharer/sharer.php?u={canonical_post_url}" target="_blank" rel="noopener noreferrer">Share on Facebook</a>
+            <a href="https://www.linkedin.com/shareArticle?mini=true&url={canonical_post_url}&title={escaped_title_html}" target="_blank" rel="noopener noreferrer">Share on LinkedIn</a>
+        </div>
         <div class="source-link">
             <p><strong>Disclaimer:</strong> This article was generated by an AI content creation system, synthesizing astrological insights. It may contain fictional details and external links for illustrative purposes.</p>
-            <p>Raw horoscope data provided by: <a href="{article_url_for_disclaimer}" target="_blank" rel="noopener noreferrer">{article_url_for_disclaimer}</a></p>
+            <p>Raw horoscope data provided by: <a href="{raw_data_source_url}" target="_blank" rel="noopener noreferrer">{raw_data_source_url}</a></p>
         </div>
     </div>
 </body>
@@ -1508,12 +1557,6 @@ def save_blog_post(consolidated_topic_for_fallback, generated_markdown_content, 
 
     image_src_for_html_body = transformed_image_b64 if transformed_image_b64 else ''
 
-    image_url_for_seo = ''
-    if image_src_for_html_body and not image_url_for_seo:
-        logger.warning("For optimal SEO (og:image, twitter:image, JSON-LD), 'image_url_for_seo' should be a publicly accessible URL. Currently it is left blank as the script doesn't upload images to a public host.")
-        logger.warning("You may need to manually update the og:image, twitter:image, and JSON-LD image URL in Blogger after publishing if you want external image SEO.")
-
-
     published_date = metadata.get('date', datetime.now().strftime('%Y-%m-%d'))
 
     html_blog_content = markdown_to_html(
@@ -1531,7 +1574,11 @@ def save_blog_post(consolidated_topic_for_fallback, generated_markdown_content, 
     final_html_output = generate_enhanced_html_template(
         title, description, keywords, image_src_for_html_body,
         html_blog_content,
-        category, primary_source_url, published_date
+        category,
+        CANONICAL_URL_PLACEHOLDER,  # Will be replaced after post creation
+        primary_source_url,
+        published_date,
+        PUBLIC_IMAGE_URL_PLACEHOLDER  # Will be replaced after post creation
     )
 
     with open(file_path, "w", encoding="utf-8") as f:
